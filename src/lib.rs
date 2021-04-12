@@ -8,24 +8,20 @@ use syn::{parse_macro_input, ItemTrait, AttributeArgs};
 pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     let mut og = input.clone();
     let args = parse_macro_input!(attr as AttributeArgs);
+    let mut args = args.iter();
     // Get the key and actor types
-    let mut key = None;
-    let mut actor = None;
-    for arg in args.iter(){
-        if let syn::NestedMeta::Meta(meta) = arg{
-            if let syn::Meta::NameValue(name_value) = meta{
-                if let Some(path) = name_value.path.get_ident(){
-                    match path{
-                        key_path if *key_path == syn::Ident::new("Key", Span::call_site()) => key = Some(name_value.lit.clone()),
-                        act_path if *act_path == syn::Ident::new("Actor", Span::call_site()) => actor = Some(name_value.lit.clone()),
-                        _ => {},
-                    }
-                }
-            }
-        }
+    let key = if let Some(syn::NestedMeta::Meta(syn::Meta::Path(path))) = args.next(){
+        Some(path)
     }
-    let key = key.unwrap();
-    let actor = actor.unwrap();
+    else{
+        None
+    };
+    let actor = if let Some(syn::NestedMeta::Meta(syn::Meta::Path(path))) = args.next(){
+        Some(path)
+    }
+    else{
+        None
+    };
 
     let input = parse_macro_input!(input as ItemTrait);
 
@@ -35,8 +31,8 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     
     let final_trait_impl = quote!{impl<'a, #input.generics> Role for #input.ident <#input.generics> + 'a};
     let final_trait_types = quote!{
-        type Actor = #actor;
-        type Key = #key;
+        type Actor = #actor.map_or_else(|s| s.into(), quote!{compile_error!("No Actor argument given in pos=1!")});
+        type Key = #key.map_or_else(|s| s.into(), quote!{compile_error!("No Key argument given in pos=0!")});
 
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
