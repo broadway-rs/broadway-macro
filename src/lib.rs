@@ -85,7 +85,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            let variant_arg_names = syn::punctuated::Punctuated::<syn::Pat, syn::token::Comma>::from({
+            let variant_arg_names = syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>::from({
                 sig
                     .inputs
                     .clone()
@@ -93,7 +93,12 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
                     .skip(1)
                     .filter_map(|fn_arg| 
                         if let syn::FnArg::Typed(pat) = fn_arg{
-                            Some(*pat.pat.clone())
+                            if let syn::Pat::Ident(pat_ident) = *pat.pat{
+                                Some(pat_ident.ident)
+                            }
+                            else{
+                                None
+                            }
                         }
                         else{
                             None
@@ -174,7 +179,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            let variant_arg_names = syn::punctuated::Punctuated::<syn::Pat, syn::token::Comma>::from({
+            let variant_arg_names = syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>::from({
                 sig
                     .inputs
                     .clone()
@@ -182,7 +187,12 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
                     .skip(1)
                     .filter_map(|fn_arg| 
                         if let syn::FnArg::Typed(pat) = fn_arg{
-                            Some(*pat.pat.clone())
+                            if let syn::Pat::Ident(pat_ident) = *pat.pat{
+                                Some(pat_ident.ident)
+                            }
+                            else{
+                                None
+                            }
                         }
                         else{
                             None
@@ -208,7 +218,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         pub enum #mut_call_ident{
             #mut_calls
         }
-        
+
         #[async_trait]
         impl MutHandler<#actor> for Call<#mut_call_ident, #reply_ident>{
             async fn handle(self, actor: &mut #actor){
