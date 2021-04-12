@@ -49,6 +49,17 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         }
         else{
             None
+        })
+        .filter(|item| if let Some(syn::FnArg::Receiver(rec)) = item.inputs.first(){
+            if !rec.reference.is_none() && rec.mutability.is_none(){
+                true
+            }
+            else{
+                false
+            }
+        }
+        else{
+            false
         });
 
     let calls = call_names.clone()
