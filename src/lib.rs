@@ -65,7 +65,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     let calls = call_names.clone()
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
-            let variant_args = sig.inputs;
+            let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
             quote!{
                 #variant(#variant_args),
                 #stream
@@ -75,7 +75,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     let call_defs = call_names
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
-            let variant_args = sig.inputs;
+            let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
             quote!{
                 #call_ident::#variant(#variant_args) => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_args).await)).await,
                 #stream
