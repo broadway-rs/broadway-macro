@@ -14,7 +14,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         Some(path)
     }
     else{
-        panic!();
+        panic!("CANNOT BUILD MACRO");
         None
     };
     let actor = if let Some(syn::NestedMeta::Meta(syn::Meta::Path(path))) = args.next(){
@@ -30,14 +30,15 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     let mut_call_ident = format_ident!("{}MutCall", input.ident);
     let reply_ident = format_ident!("{}Reply", input.ident);
     
-    let final_trait_impl = quote!{impl<'a, #input.generics> Role for #input.ident <#input.generics> + 'a};
-    let final_trait_types = quote!{
+    let final_trait = quote!{
+        impl<'a, #input.generics> Role for #input.ident <#input.generics> + 'a{
         type Actor = #actor.map_or_else(|s| TokenStream::from(s), TokenStream::from(quote!{compile_error!("No Actor argument given in pos=1!")}));
         type Key = #key.map_or_else(|s| TokenStream::from(s), TokenStream::from(quote!{compile_error!("No Key argument given in pos=0!")}));
 
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
-    };
+    }};
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
+    og.extend(TokenStream::from(final_trait));
     og
 }
