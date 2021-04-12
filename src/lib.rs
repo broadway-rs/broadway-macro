@@ -99,7 +99,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         });
 
     let call_def = quote!{
-        enum #call_ident{
+        pub enum #call_ident{
             #calls
         }
 
