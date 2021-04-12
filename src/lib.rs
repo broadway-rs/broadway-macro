@@ -202,13 +202,13 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
             });
             if variant_args.len() > 0{
                 quote!{
-                    #call_ident::#variant{#variant_args} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
+                    #mut_call_ident::#variant{#variant_args} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
                     #stream
                 }
             }
             else{
                 quote!{
-                    #call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
+                    #mut_call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
                     #stream
                 }
             }
