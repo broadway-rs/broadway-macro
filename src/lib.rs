@@ -272,6 +272,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     og.extend(TokenStream::from(call_def));
     og.extend(TokenStream::from(mut_call_def));
     og.extend(TokenStream::from(reply_def));
+    og.extend(TokenStream::from(channel_impl));
     og
 }
 
