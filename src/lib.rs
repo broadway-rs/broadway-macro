@@ -221,7 +221,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         
         #[async_trait]
         impl MutHandler<#actor> for Call<#mut_call_ident, #reply_ident>{
-            async fn handle(self, actor: &mut #actor){
+            async fn handle_mut(self, actor: &mut #actor){
                 match self.call{
                     #mut_call_defs
                 };
