@@ -239,7 +239,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
             quote!{
                 #sig{
                     let (return_channel, receiver) = unbounded();
-                    self.calls_sender.send(
+                    self.mut_calls_sender.send(
                         Call{
                             return_channel,
                             call: #mut_call_ident::#variant{#variant_arg_names}
