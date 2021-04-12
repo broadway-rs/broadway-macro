@@ -37,5 +37,6 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
     };
-    (quote!{#final_trait_impl { #final_trait_types }}).into()
+    (quote!{#final_trait_impl { #final_trait_types }});
+    quote!({TEST}).into()
 }
