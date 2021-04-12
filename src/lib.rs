@@ -14,6 +14,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         Some(path)
     }
     else{
+        panic!();
         None
     };
     let actor = if let Some(syn::NestedMeta::Meta(syn::Meta::Path(path))) = args.next(){
