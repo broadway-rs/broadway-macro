@@ -41,6 +41,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
     }};
 
+    // Generate {}Call enum
     let call_names = input
         .items
         .iter()
@@ -113,8 +114,83 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         }
     };
 
+    // Generate {}MutCall enum
+    let mut_call_names = input
+    .items
+    .iter()
+    .filter_map(|item| if let syn::TraitItem::Method(method) = item{
+        Some(method.sig.clone())
+    }
+    else{
+        None
+    })
+    .filter(|item| if let Some(syn::FnArg::Receiver(rec)) = item.inputs.first(){
+        if !rec.reference.is_none() && !rec.mutability.is_none(){
+            true
+        }
+        else{
+            false
+        }
+    }
+    else{
+        false
+    });
+
+    let mut_calls = mut_call_names.clone()
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident;
+            let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
+            if variant_args.len() > 0{
+                quote!{
+                    #variant(#variant_args),
+                    #stream
+                }
+            }
+            else{
+                quote!{
+                    #variant,
+                    #stream
+                }
+            }
+        });
+
+    let mut_call_defs = mut_call_names
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident;
+            let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
+            if variant_args.len() > 0{
+                quote!{
+                    #call_ident::#variant(#variant_args) => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_args).await)).await,
+                    #stream
+                }
+            }
+            else{
+                quote!{
+                    #call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
+                    #stream
+                }
+            }
+        });
+
+    let mut_call_def = quote!{
+        pub enum #mut_call_ident{
+            #mut_calls
+        }
+
+        #[async_trait]
+        impl MutHandler<#actor> for Call<#mut_call_ident, #reply_ident>{
+            async fn handle(self, actor: &mut #actor){
+                match self.call{
+                    #mut_call_defs
+                };
+            }
+        }
+    };
+    
+
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
     og.extend(TokenStream::from(final_trait));
     og.extend(TokenStream::from(call_def));
+    og.extend(TokenStream::from(mut_call_def));
     og
 }
