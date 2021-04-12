@@ -67,55 +67,22 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            if variant_args.len() > 0{
-                quote!{
-                    #variant(#variant_args),
-                    #stream
-                }
-            }
-            else{
-                quote!{
-                    #variant,
-                    #stream
-                }
+            
+            quote!{
+                #variant(#variant_args),
+                #stream
             }
         });
 
     let call_defs = call_names
+        .clone()
         .fold(quote!{}, |stream, sig|{
-            let variant = sig.ident;
-            let variant_arg_names = syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>::from({
-                sig
-                    .inputs
-                    .clone()
-                    .into_iter()
-                    .skip(1)
-                    .filter_map(|fn_arg| 
-                        if let syn::FnArg::Typed(pat) = fn_arg{
-                            if let syn::Pat::Ident(pat_ident) = *pat.pat{
-                                Some(pat_ident.ident)
-                            }
-                            else{
-                                None
-                            }
-                        }
-                        else{
-                            None
-                        }
-                    )
-                    .collect()
-            });
-            if variant_arg_names.len() > 0{
-                quote!{
-                    #call_ident::#variant{#variant_arg_names} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
-                    #stream
-                }
-            }
-            else{
-                quote!{
-                    #call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
-                    #stream
-                }
+            let variant = sig.ident.clone();
+            let variant_arg_names = get_arg_names(&sig);
+            
+            quote!{
+                #call_ident::#variant{#variant_arg_names} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
+                #stream
             }
         });
 
@@ -136,79 +103,46 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
 
     // Generate {}MutCall enum
     let mut_call_names = input
-    .items
-    .iter()
-    .filter_map(|item| if let syn::TraitItem::Method(method) = item{
-        Some(method.sig.clone())
-    }
-    else{
-        None
-    })
-    .filter(|item| if let Some(syn::FnArg::Receiver(rec)) = item.inputs.first(){
-        if !rec.reference.is_none() && !rec.mutability.is_none(){
-            true
+        .items
+        .iter()
+        .filter_map(|item| if let syn::TraitItem::Method(method) = item{
+            Some(method.sig.clone())
+        }
+        else{
+            None
+        })
+        .filter(|item| if let Some(syn::FnArg::Receiver(rec)) = item.inputs.first(){
+            if !rec.reference.is_none() && !rec.mutability.is_none(){
+                true
+            }
+            else{
+                false
+            }
         }
         else{
             false
-        }
-    }
-    else{
-        false
-    });
+        });
 
     let mut_calls = mut_call_names.clone()
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            if variant_args.len() > 0{
-                quote!{
-                    #variant{#variant_args},
-                    #stream
-                }
-            }
-            else{
-                quote!{
-                    #variant,
-                    #stream
-                }
+            
+            quote!{
+                #variant{#variant_args},
+                #stream
             }
         });
 
     let mut_call_defs = mut_call_names
+        .clone()
         .fold(quote!{}, |stream, sig|{
-            let variant = sig.ident;
-            let variant_arg_names = syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>::from({
-                sig
-                    .inputs
-                    .clone()
-                    .into_iter()
-                    .skip(1)
-                    .filter_map(|fn_arg| 
-                        if let syn::FnArg::Typed(pat) = fn_arg{
-                            if let syn::Pat::Ident(pat_ident) = *pat.pat{
-                                Some(pat_ident.ident)
-                            }
-                            else{
-                                None
-                            }
-                        }
-                        else{
-                            None
-                        }
-                    )
-                    .collect()
-            });
-            if variant_arg_names.len() > 0{
-                quote!{
-                    #mut_call_ident::#variant{#variant_arg_names} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
-                    #stream
-                }
-            }
-            else{
-                quote!{
-                    #mut_call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
-                    #stream
-                }
+            let variant = sig.ident.clone();
+            let variant_arg_names = get_arg_names(&sig);
+            
+            quote!{
+                #mut_call_ident::#variant{#variant_arg_names} => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_arg_names).await)).await,
+                #stream
             }
         });
 
@@ -271,10 +205,96 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         }
     };
 
+    // Generate the mut call impls for ActorChannel
+    let call_impls = call_names.clone()
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident.clone();
+            let variant_arg_names = get_arg_names(&sig);
+            quote!{
+                #sig{
+                    let (return_channel, receiver) = unbounded();
+                    self.calls_sender.send(
+                        Call{
+                            return_channel,
+                            call: #call_ident::#variant{#variant_arg_names}
+                        }
+                    ).await;
+                    if let Ok(#reply_ident::#variant(reply)) = receiver.recv().await{
+                        reply
+                    }
+                    else{
+                        panic!("Ruh roh");
+                    }
+                }
+                
+                #stream
+            }
+        });
+
+    // Generate the call impls for ActorChannel
+    let mut_call_impls = mut_call_names.clone()
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident.clone();
+            let variant_arg_names = get_arg_names(&sig);
+            quote!{
+                #sig{
+                    let (return_channel, receiver) = unbounded();
+                    self.calls_sender.send(
+                        Call{
+                            return_channel,
+                            call: #mut_call_ident::#variant{#variant_arg_names}
+                        }
+                    ).await;
+                    if let Ok(#reply_ident::#variant(reply)) = receiver.recv().await{
+                        reply
+                    }
+                    else{
+                        panic!("Ruh roh");
+                    }
+                }
+                
+                #stream
+            }
+        });
+
+    // Generate ActorChannel impl
+    let channel_impl = quote!{
+        #[async_trait]
+        impl #trait_name for ActorChannel<dyn #trait_name>{
+            #call_impls
+
+            #mut_call_impls
+        }
+    };
+
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
     og.extend(TokenStream::from(final_trait));
     og.extend(TokenStream::from(call_def));
     og.extend(TokenStream::from(mut_call_def));
     og.extend(TokenStream::from(reply_def));
     og
+}
+
+fn get_arg_names(sig: &syn::Signature) -> syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>{
+    syn::punctuated::Punctuated::<syn::Ident, syn::token::Comma>::from({
+        sig
+            .inputs
+            .clone()
+            .into_iter()
+            .skip(1)
+            .filter_map(|fn_arg| 
+                if let syn::FnArg::Typed(pat) = fn_arg{
+                    if let syn::Pat::Ident(pat_ident) = *pat.pat{
+                        Some(pat_ident.ident)
+                    }
+                    else{
+                        None
+                    }
+                }
+                else{
+                    None
+                }
+            )
+            .collect()
+    })
 }
