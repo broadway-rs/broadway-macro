@@ -225,13 +225,56 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
                 };
             }
         }
-        
     };
+
+    // Generate {}Reply enum
+    let reply_names = input
+        .items
+        .iter()
+        .filter_map(|item| if let syn::TraitItem::Method(method) = item{
+            Some(method.sig.clone())
+        }
+        else{
+            None
+        })
+        .filter(|item| if let Some(syn::FnArg::Receiver(rec)) = item.inputs.first(){
+            if !rec.reference.is_none(){
+                true
+            }
+            else{
+                false
+            }
+        }
+        else{
+            false
+        });
+
+    let replies = reply_names.clone()
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident;
+            let return_type = sig.output;
+            match return_type{
+                syn::ReturnType::Default => quote!{
+                    #variant(()),
+                    #stream
+                },
+                syn::ReturnType::Type(_, ty) => quote!{
+                    #variant(#ty),
+                    #stream
+                }
+            }
+        });
     
+    let reply_def = quote!{
+        pub enum #reply_ident{
+            #replies
+        }
+    };
 
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
     og.extend(TokenStream::from(final_trait));
     og.extend(TokenStream::from(call_def));
     og.extend(TokenStream::from(mut_call_def));
+    og.extend(TokenStream::from(reply_def));
     og
 }
