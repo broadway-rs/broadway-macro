@@ -1,5 +1,5 @@
 [package]
-name = "broadway-macro"
+name = "broadway_macro"
 version = "0.1.0"
 authors = ["James Bell <jamesbell@microsoft.com>"]
 edition = "2018"
