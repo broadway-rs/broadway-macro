@@ -6,7 +6,7 @@ use syn::{parse_macro_input, ItemTrait, AttributeArgs};
 
 #[proc_macro_attribute]
 pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
-    let mut og = input.clone();
+    let og = input.clone();
     let args = parse_macro_input!(attr as AttributeArgs);
     // Get the key and actor types
     let mut key = None;
@@ -41,6 +41,5 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
     };
-    og.extend::<TokenStream>((quote!{#final_trait_impl { #final_trait_types }}).into());
-    og
+    (quote!{#og #final_trait_impl { #final_trait_types }}).into()
 }
