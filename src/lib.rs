@@ -39,6 +39,6 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
     }};
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
-    og.extend(TokenStream::from(final_trait));
+    og.extend(og.clone());
     og
 }
