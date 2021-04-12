@@ -31,8 +31,8 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
     
     let final_trait_impl = quote!{impl<'a, #input.generics> Role for #input.ident <#input.generics> + 'a};
     let final_trait_types = quote!{
-        type Actor = #actor.map_or_else(|s| s.into(), quote!{compile_error!("No Actor argument given in pos=1!")});
-        type Key = #key.map_or_else(|s| s.into(), quote!{compile_error!("No Key argument given in pos=0!")});
+        type Actor = #actor.map_or_else(|s| TokenStream::from(s), TokenStream::from(quote!{compile_error!("No Actor argument given in pos=1!")}));
+        type Key = #key.map_or_else(|s| TokenStream::from(s), TokenStream::from(quote!{compile_error!("No Key argument given in pos=0!")}));
 
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
