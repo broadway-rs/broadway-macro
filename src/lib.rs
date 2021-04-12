@@ -66,9 +66,17 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            quote!{
-                #variant(#variant_args),
-                #stream
+            if variant_args.len() > 0{
+                quote!{
+                    #variant(#variant_args),
+                    #stream
+                }
+            }
+            else{
+                quote!{
+                    #variant,
+                    #stream
+                }
             }
         });
 
@@ -76,9 +84,17 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         .fold(quote!{}, |stream, sig|{
             let variant = sig.ident;
             let variant_args = syn::punctuated::Punctuated::<syn::FnArg, syn::token::Comma>::from(sig.inputs.clone().into_iter().skip(1).collect());
-            quote!{
-                #call_ident::#variant(#variant_args) => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_args).await)).await,
-                #stream
+            if variant_args.len() > 0{
+                quote!{
+                    #call_ident::#variant(#variant_args) => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_args).await)).await,
+                    #stream
+                }
+            }
+            else{
+                quote!{
+                    #call_ident::#variant => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor).await)).await,
+                    #stream
+                }
             }
         });
 
