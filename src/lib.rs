@@ -219,6 +219,8 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
             #mut_calls
         }
 
+        const THING: &str = stringify!(#mut_call_defs);
+        /*
         #[async_trait]
         impl MutHandler<#actor> for Call<#mut_call_ident, #reply_ident>{
             async fn handle(self, actor: &mut #actor){
@@ -227,6 +229,7 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
                 };
             }
         }
+        */
     };
     
 
