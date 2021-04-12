@@ -40,7 +40,54 @@ pub fn role(attr: TokenStream, input: TokenStream) -> TokenStream{
         type Calls = Call<#call_ident, #reply_ident>;
         type MutCalls = Call<#mut_call_ident, #reply_ident>;
     }};
+
+    let call_names = input
+        .items
+        .iter()
+        .filter_map(|item| if let syn::TraitItem::Method(method) = item{
+            Some(method.sig.clone())
+        }
+        else{
+            None
+        });
+
+    let calls = call_names.clone()
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident;
+            let variant_args = sig.inputs;
+            quote!{
+                #variant(#variant_args),
+                #stream
+            }
+        });
+
+    let call_defs = call_names
+        .fold(quote!{}, |stream, sig|{
+            let variant = sig.ident;
+            let variant_args = sig.inputs;
+            quote!{
+                #call_ident::#variant(#variant_args) => self.return_channel.send(#reply_ident::#variant(#actor::#variant(actor, #variant_args).await)).await,
+                #stream
+            }
+        });
+
+    let call_def = quote!{
+        enum #call_ident{
+            #calls
+        }
+
+        #[async_trait]
+        impl Handler<#actor> for Call<#call_ident, #reply_ident>{
+            async fn handle(self, actor: &#actor){
+                match self.call{
+                    #call_defs
+                };
+            }
+        }
+    };
+
     //og.extend(TokenStream::from(quote!{#final_trait_impl { #final_trait_types }}));
     og.extend(TokenStream::from(final_trait));
+    og.extend(TokenStream::from(call_def));
     og
 }
